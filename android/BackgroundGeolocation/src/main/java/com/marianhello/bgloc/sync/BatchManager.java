@@ -58,6 +58,7 @@ public class BatchManager {
                 SQLiteLocationContract.LocationEntry.COLUMN_NAME_HAS_BEARING,
                 SQLiteLocationContract.LocationEntry.COLUMN_NAME_HAS_ALTITUDE,
                 SQLiteLocationContract.LocationEntry.COLUMN_NAME_HAS_RADIUS,
+                SQLiteLocationContract.LocationEntry.COLUMN_NAME_MAIN_APP_VISIBLE,
                 SQLiteLocationContract.LocationEntry.COLUMN_NAME_LOCATION_PROVIDER
         };
 
@@ -99,6 +100,7 @@ public class BatchManager {
             while (cursor.moveToNext()) {
                 long locationId = cursor.getLong(cursor.getColumnIndex(SQLiteLocationContract.LocationEntry._ID));
                 int locationProvider = cursor.getInt(cursor.getColumnIndex(SQLiteLocationContract.LocationEntry.COLUMN_NAME_LOCATION_PROVIDER));
+                Integer isMainAppVisible = cursor.getInt(cursor.getColumnIndex(SQLiteLocationContract.LocationEntry.COLUMN_NAME_MAIN_APP_VISIBLE));
                 String provider = cursor.getString(cursor.getColumnIndex(SQLiteLocationContract.LocationEntry.COLUMN_NAME_PROVIDER));
                 double latitude = cursor.getDouble(cursor.getColumnIndex(SQLiteLocationContract.LocationEntry.COLUMN_NAME_LATITUDE));
                 double longitude = cursor.getDouble(cursor.getColumnIndex(SQLiteLocationContract.LocationEntry.COLUMN_NAME_LONGITUDE));
@@ -123,7 +125,7 @@ public class BatchManager {
                         Map.Entry<String, String> pair = (Map.Entry) it.next();
                         String key = pair.getKey();
                         String value = String.valueOf(pair.getValue());
-
+                        if (isMainAppVisible != null) writer.name("isMainAppVisible").value(isMainAppVisible);
                         if ("@id".equals(value)) {
                             writer.name(key).value(locationId);
                         } else if ("@locationProvider".equals(value)) {
@@ -177,6 +179,7 @@ public class BatchManager {
                     Iterator it = hashTemplate.iterator();
                     while (it.hasNext()) {
                         String key = it.next().toString();
+                        if (isMainAppVisible != null) writer.name("isMainAppVisible").value(isMainAppVisible);
                         if ("@id".equals(key)) {
                             writer.value(locationId);
                         } else if ("@locationProvider".equals(key)) {

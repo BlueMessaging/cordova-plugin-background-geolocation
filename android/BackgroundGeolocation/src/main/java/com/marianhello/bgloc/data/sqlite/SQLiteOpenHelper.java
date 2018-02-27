@@ -40,6 +40,7 @@ public class SQLiteOpenHelper extends android.database.sqlite.SQLiteOpenHelper {
         LocationEntry.COLUMN_NAME_PROVIDER + TEXT_TYPE + COMMA_SEP +
         LocationEntry.COLUMN_NAME_LOCATION_PROVIDER + INTEGER_TYPE + COMMA_SEP +
         LocationEntry.COLUMN_NAME_VALID + INTEGER_TYPE + COMMA_SEP +
+        LocationEntry.COLUMN_NAME_MAIN_APP_VISIBLE + INTEGER_TYPE + COMMA_SEP +
         LocationEntry.COLUMN_NAME_BATCH_START_MILLIS + INTEGER_TYPE +
         " )";
 
@@ -161,7 +162,8 @@ public class SQLiteOpenHelper extends android.database.sqlite.SQLiteOpenHelper {
             case 12:
                 alterSql.add("ALTER TABLE " + ConfigurationEntry.TABLE_NAME +
                         " ADD COLUMN " + ConfigurationEntry.COLUMN_NAME_TEMPLATE + TEXT_TYPE);
-
+                alterSql.add("ALTER TABLE " + LocationEntry.TABLE_NAME +
+                        " ADD COLUMN " + LocationEntry.COLUMN_NAME_MAIN_APP_VISIBLE + INTEGER_TYPE);
                 break;
             default:
                 onDowngrade(db, 0, 0);

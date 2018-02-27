@@ -54,6 +54,7 @@ public class SQLiteLocationDAO implements LocationDAO {
       LocationEntry.COLUMN_NAME_HAS_RADIUS,
       LocationEntry.COLUMN_NAME_LOCATION_PROVIDER,
       LocationEntry.COLUMN_NAME_VALID,
+      LocationEntry.COLUMN_NAME_MAIN_APP_VISIBLE,
       LocationEntry.COLUMN_NAME_BATCH_START_MILLIS
     };
 
@@ -222,6 +223,7 @@ public class SQLiteLocationDAO implements LocationDAO {
             location.getLocationProvider(),
             location.getBatchStartMillis(),
             location.isValid() ? 1 : 0,
+            location.isMainAppVisible() ? 1 : 0,
             locationId
     });
 
@@ -251,14 +253,13 @@ public class SQLiteLocationDAO implements LocationDAO {
 
   /**
    * Delete all locations
-   *
-   * Note: location are not actually deleted only flagged as non valid
+   * clear the locations db
    */
   public void deleteAllLocations() {
     ContentValues values = new ContentValues();
     values.put(LocationEntry.COLUMN_NAME_VALID, 0);
 
-    db.update(LocationEntry.TABLE_NAME, values, null, null);
+    db.delete(LocationEntry.TABLE_NAME, null, null);
   }
 
   private BackgroundLocation hydrate(Cursor c) {
@@ -284,6 +285,7 @@ public class SQLiteLocationDAO implements LocationDAO {
     l.setLocationProvider(c.getInt(c.getColumnIndex(LocationEntry.COLUMN_NAME_LOCATION_PROVIDER)));
     l.setBatchStartMillis(c.getLong(c.getColumnIndex(LocationEntry.COLUMN_NAME_BATCH_START_MILLIS)));
     l.setValid(c.getInt(c.getColumnIndex(LocationEntry.COLUMN_NAME_VALID)) != 0);
+    l.setMainAppVisible(c.getColumnIndex(LocationEntry.COLUMN_NAME_MAIN_APP_VISIBLE) != 0);
     l.setLocationId(c.getLong(c.getColumnIndex(LocationEntry._ID)));
 
     return l;
@@ -307,6 +309,7 @@ public class SQLiteLocationDAO implements LocationDAO {
     values.put(LocationEntry.COLUMN_NAME_HAS_RADIUS, l.hasRadius() ? 1 : 0);
     values.put(LocationEntry.COLUMN_NAME_LOCATION_PROVIDER, l.getLocationProvider());
     values.put(LocationEntry.COLUMN_NAME_VALID, l.isValid() ? 1 : 0);
+    values.put(LocationEntry.COLUMN_NAME_MAIN_APP_VISIBLE, l.isMainAppVisible() ? 1 : 0);
     values.put(LocationEntry.COLUMN_NAME_BATCH_START_MILLIS, l.getBatchStartMillis());
 
     return values;

@@ -33,6 +33,7 @@ public class BackgroundLocation implements Parcelable {
     private boolean hasRadius = false;
     private boolean isFromMockProvider = false;
     private boolean isValid = true;
+    private boolean isMainAppVisible = true;
     private Bundle extras = null;
 
     private static final long TWO_MINUTES_IN_NANOS = 1000000000L * 60 * 2;
@@ -110,6 +111,7 @@ public class BackgroundLocation implements Parcelable {
         hasRadius = l.hasRadius;
         isFromMockProvider = l.isFromMockProvider;
         isValid = l.isValid;
+        isMainAppVisible = l.isMainAppVisible;
         extras = (l.extras == null) ? null : new Bundle(l.extras);
     }
 
@@ -134,6 +136,7 @@ public class BackgroundLocation implements Parcelable {
         hasRadius = in.readInt() != 0;
         isFromMockProvider = in.readInt() != 0;
         isValid = in.readInt() != 0;
+        isMainAppVisible = in.readInt() != 0;
         extras = in.readBundle();
     }
 
@@ -164,6 +167,7 @@ public class BackgroundLocation implements Parcelable {
         dest.writeInt(hasRadius ? 1 : 0);
         dest.writeInt(isFromMockProvider ? 1 : 0);
         dest.writeInt(isValid ? 1 : 0);
+        dest.writeInt(isMainAppVisible ? 1 : 0);
         dest.writeBundle(extras);
     }
 
@@ -695,6 +699,7 @@ public class BackgroundLocation implements Parcelable {
         if (extras != null) {
             s.append(" {").append(extras).append('}');
         }
+        s.append(" isMainAppVisible=").append(isMainAppVisible);
         s.append(" locprov=").append(locationProvider);
         s.append("]");
 
@@ -709,6 +714,7 @@ public class BackgroundLocation implements Parcelable {
         JSONObject json = new JSONObject();
         json.put("provider", provider);
         json.put("locationProvider", locationProvider);
+        json.put("isMainAppVisible", isMainAppVisible);
         json.put("time", time);
         json.put("latitude", latitude);
         json.put("longitude", longitude);
@@ -732,6 +738,14 @@ public class BackgroundLocation implements Parcelable {
         JSONObject json = this.toJSONObject();
         json.put("id", locationId);
         return json;
+    }
+
+    public boolean isMainAppVisible() {
+        return isMainAppVisible;
+    }
+
+    public void setMainAppVisible(boolean mainAppVisible) {
+        isMainAppVisible = mainAppVisible;
     }
 
     public Object getValueForKey(String key) {
