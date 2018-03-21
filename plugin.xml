@@ -24,7 +24,7 @@
 
     <!-- android -->
     <platform name="android">
-        <preference name="GOOGLE_PLAY_SERVICES_VERSION" default="+"/>
+        <preference name="GOOGLE_PLAY_SERVICES_VERSION" default="11.+"/>
         <preference name="ICON" default="@mipmap/icon" />
         <preference name="SMALL_ICON" default="@mipmap/icon" />
         <preference name="ACCOUNT_NAME" default="@string/app_name" />
