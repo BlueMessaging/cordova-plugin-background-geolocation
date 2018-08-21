@@ -9,6 +9,7 @@ This is a new class
 
 package com.marianhello.bgloc;
 
+import android.Manifest;
 import android.accounts.Account;
 import android.app.Notification;
 import android.app.NotificationManager;
@@ -18,9 +19,14 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.database.SQLException;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.location.Criteria;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.AsyncTask;
@@ -33,14 +39,20 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.NotificationCompat;
+import android.telephony.TelephonyManager;
+import android.util.Log;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ServerValue;
 import com.marianhello.bgloc.data.BackgroundActivity;
 import com.marianhello.bgloc.data.BackgroundLocation;
 import com.marianhello.bgloc.data.ConfigurationDAO;
 import com.marianhello.bgloc.data.DAOFactory;
 import com.marianhello.bgloc.data.LocationDAO;
-import com.marianhello.bgloc.data.LocationTemplate;
 import com.marianhello.bgloc.sync.AccountHelper;
 import com.marianhello.bgloc.sync.AuthenticatorService;
 import com.marianhello.bgloc.sync.SyncService;
@@ -48,9 +60,11 @@ import com.marianhello.logging.LoggerManager;
 
 import org.json.JSONArray;
 import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.net.HttpURLConnection;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.Iterator;
 
@@ -125,13 +139,31 @@ public class LocationService extends Service {
     private volatile HandlerThread handlerThread;
     private ServiceHandler serviceHandler;
 
+    private LocationManager locationManager;
+    private LocationListener locationListener;
+    private String provider;
+    private Criteria criteria;
+    TelephonyManager telephonyManager;
+
     private class ServiceHandler extends Handler {
+
         public ServiceHandler(Looper looper) {
             super(looper);
         }
 
         @Override
         public void handleMessage(Message msg) {
+
+            String TAG = "handleMessage";
+            Log.i(TAG, "handleMessage: ");
+
+            Log.i(TAG, "provider: " + provider);
+
+            if (ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                Log.e("permission", "without permissions");
+                return;
+            }
+            locationManager.requestLocationUpdates(provider, 120*1000, 0, locationListener);
         }
     }
 
@@ -190,6 +222,11 @@ public class LocationService extends Service {
         mSyncAccount = AccountHelper.CreateSyncAccount(this,
                 AuthenticatorService.getAccount(getStringResource(Config.ACCOUNT_TYPE_RESOURCE)));
 
+        criteria = new Criteria();
+        locationManager = (LocationManager) getApplicationContext().getSystemService(Context.LOCATION_SERVICE);
+        provider = locationManager.getBestProvider(criteria, false);
+        telephonyManager = (TelephonyManager)getSystemService(Context.TELEPHONY_SERVICE);
+
         registerReceiver(connectivityChangeReceiver, new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
     }
 
@@ -206,6 +243,9 @@ public class LocationService extends Service {
         unregisterReceiver(connectivityChangeReceiver);
 
         isRunning = false;
+
+        locationManager.removeUpdates(locationListener);
+
         super.onDestroy();
     }
 
@@ -260,6 +300,67 @@ public class LocationService extends Service {
                     mConfig.getNotificationIconColor());
             startForeground(NOTIF_ID, notification);
         }
+
+        final String TAG = "locListener";
+        locationListener = new LocationListener() {
+            @Override
+            public void onLocationChanged(Location location) {
+                Log.i(TAG, "onLocationChanged: " + location.getAccuracy()+ ", "
+                        + location.getLatitude() + "," + location.getLongitude());
+                if (ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
+                    Log.e(TAG, "without permissions");
+                    return;
+                }
+
+                Config config = getConfig();
+                String userID = config.getBmpUserID();
+                Calendar calendar = new GregorianCalendar();
+                Date time = new Date(location.getTime());
+
+                calendar.setTime(time);
+
+                FirebaseAuth firebaseAuth = FirebaseAuth.getInstance();
+
+                DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference()
+                        .child("DOMAINS")
+                        .child(firebaseAuth.getUid())
+                        .child("USERS")
+                        .child(userID)
+                        .child(String.valueOf(calendar.get(Calendar.YEAR)))
+                        .child(String.valueOf(String.valueOf(calendar.get(Calendar.MONTH) + 1)))
+                        .child(String.valueOf(calendar.get(Calendar.DAY_OF_MONTH)))
+                        .child("POSITIONS")
+                        .child(String.valueOf(time.getTime()));
+                databaseReference.child("accuracy").setValue(location.getAccuracy());
+                databaseReference.child("altitude").setValue(location.getAltitude());
+                databaseReference.child("dateReceiveFB").setValue(ServerValue.TIMESTAMP);
+                databaseReference.child("device").setValue(Build.MODEL);
+                databaseReference.child("imei").setValue("" + telephonyManager.getDeviceId());
+                databaseReference.child("isMainAppVisible").setValue(false);
+                databaseReference.child("position").setValue(location.getLatitude()
+                        + "," + location.getLongitude());
+                databaseReference.child("provider").setValue(provider);
+                String hours = (time.getHours()<10)?"0"+time.getHours():String.valueOf(time.getHours());
+                String minutes = (time.getMinutes()<10)?"0"+time.getMinutes():String.valueOf(time.getMinutes());
+                String seconds = (time.getSeconds()<10)?"0"+time.getSeconds():String.valueOf(time.getSeconds());
+                databaseReference.child("time").setValue(hours + ":" + minutes + ":" + seconds);
+            }
+
+            @Override
+            public void onStatusChanged(String provider, int status, Bundle extras) {
+                Log.i(TAG, "onStatusChanged");
+            }
+
+            @Override
+            public void onProviderEnabled(String provider) {
+                Log.i(TAG, "onProviderEnabled");
+            }
+
+            @Override
+            public void onProviderDisabled(String provider) {
+                Log.i(TAG, "onProviderDisabled");
+            }
+        };
 
         mProvider.onCreate();
         mProvider.onStart();
@@ -406,6 +507,8 @@ public class LocationService extends Service {
         Message msg = Message.obtain(null, MSG_LOCATION_UPDATE);
         msg.setData(bundle);
 
+        locationManager.removeUpdates(locationListener);
+
         sendClientMessage(msg);
     }
 
@@ -421,6 +524,9 @@ public class LocationService extends Service {
         bundle.putParcelable(BackgroundLocation.BUNDLE_KEY, location);
         Message msg = Message.obtain(null, MSG_ON_STATIONARY);
         msg.setData(bundle);
+
+        Message msgStationary = serviceHandler.obtainMessage();
+        serviceHandler.sendMessage(msgStationary);
 
         sendClientMessage(msg);
     }
