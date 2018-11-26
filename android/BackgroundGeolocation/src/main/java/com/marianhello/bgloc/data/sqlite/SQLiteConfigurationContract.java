@@ -34,5 +34,6 @@ public final class SQLiteConfigurationContract {
         public static final String COLUMN_NAME_HEADERS = "http_headers";
         public static final String COLUMN_NAME_MAX_LOCATIONS = "max_locations";
         public static final String COLUMN_NAME_TEMPLATE = "template";
+        public static final String COLUMN_NAME_BMP_USER_ID = "bmpUserID";
     }
 }

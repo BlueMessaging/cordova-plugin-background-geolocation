@@ -97,6 +97,9 @@ public class ConfigMapper {
                 config.setTemplate(LocationTemplateFactory.fromJSON(postTemplate));
             }
         }
+        if (jObject.has("bmpUserID")) {
+            config.setBmpUserID(jObject.getString("bmpUserID"));
+        }
 
         return config;
     }
@@ -125,6 +128,7 @@ public class ConfigMapper {
         json.put("syncThreshold", config.getSyncThreshold());
         json.put("httpHeaders", new JSONObject(config.getHttpHeaders()));
         json.put("maxLocations", config.getMaxLocations());
+        json.put("bmpUserID", config.getBmpUserID());
         LocationTemplate tpl = config.getTemplate();
         Object template = JSONObject.NULL;
         if (tpl instanceof HashMapLocationTemplate) {
