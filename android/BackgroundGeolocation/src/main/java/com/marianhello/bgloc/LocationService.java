@@ -42,6 +42,7 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.NotificationCompat;
 import android.telephony.TelephonyManager;
 import android.util.Log;
+import android.widget.Toast;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DatabaseReference;
@@ -151,15 +152,6 @@ public class LocationService extends Service {
 
             String TAG = "handleMessage";
             Log.i(TAG, "handleMessage: ");
-
-            if (ActivityCompat.checkSelfPermission(getApplicationContext(),
-                    Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
-                    && ActivityCompat.checkSelfPermission(getApplicationContext(),
-                            Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                Log.e("permission", "without permissions");
-                return;
-            }
-            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 120 * 1000, 0, locationListener);
         }
     }
 
@@ -170,20 +162,20 @@ public class LocationService extends Service {
         @Override
         public void handleMessage(Message msg) {
             switch (msg.what) {
-            case MSG_REGISTER_CLIENT:
-                mClients.put(msg.arg1, msg.replyTo);
-                break;
-            case MSG_UNREGISTER_CLIENT:
-                mClients.remove(msg.arg1);
-                break;
-            case MSG_SWITCH_MODE:
-                switchMode(msg.arg1);
-                break;
-            case MSG_CONFIGURE:
-                configure(msg.getData());
-                break;
-            default:
-                super.handleMessage(msg);
+                case MSG_REGISTER_CLIENT:
+                    mClients.put(msg.arg1, msg.replyTo);
+                    break;
+                case MSG_UNREGISTER_CLIENT:
+                    mClients.remove(msg.arg1);
+                    break;
+                case MSG_SWITCH_MODE:
+                    switchMode(msg.arg1);
+                    break;
+                case MSG_CONFIGURE:
+                    configure(msg.getData());
+                    break;
+                default:
+                    super.handleMessage(msg);
             }
         }
     }
@@ -224,66 +216,6 @@ public class LocationService extends Service {
 
         registerReceiver(connectivityChangeReceiver, new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
 
-        final String TAG = "locListener";
-
-        locationListener = new LocationListener() {
-            @Override
-            public void onLocationChanged(Location location) {
-                Log.i(TAG, "onLocationChanged: " + location.getAccuracy() + ", " + location.getLatitude() + ","
-                        + location.getLongitude());
-                if (ActivityCompat.checkSelfPermission(getApplicationContext(),
-                        Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
-                    Log.e(TAG, "without permissions");
-                    return;
-                }
-
-                Config config = getConfig();
-                String userID = config.getBmpUserID();
-                Calendar calendar = new GregorianCalendar();
-                Date time = new Date(location.getTime());
-
-                calendar.setTime(time);
-
-                FirebaseAuth firebaseAuth = FirebaseAuth.getInstance();
-
-                DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference().child("DOMAINS")
-                        .child(firebaseAuth.getUid()).child("USERS").child(userID)
-                        .child(String.valueOf(calendar.get(Calendar.YEAR)))
-                        .child(String.valueOf(calendar.get(Calendar.MONTH) + 1))
-                        .child(String.valueOf(calendar.get(Calendar.DAY_OF_MONTH))).child("POSITIONS")
-                        .child(String.valueOf(time.getTime()));
-                databaseReference.child("accuracy").setValue(location.getAccuracy());
-                databaseReference.child("altitude").setValue(location.getAltitude());
-                databaseReference.child("dateReceiveFB").setValue(ServerValue.TIMESTAMP);
-                databaseReference.child("device").setValue(Build.MODEL);
-                databaseReference.child("imei").setValue("" + telephonyManager.getDeviceId());
-                databaseReference.child("isMainAppVisible").setValue(false);
-                databaseReference.child("position").setValue(location.getLatitude() + "," + location.getLongitude());
-                databaseReference.child("provider").setValue(LocationManager.NETWORK_PROVIDER);
-                String hours = (time.getHours() < 10 || time.getHours() == 0) ? "0" + time.getHours()
-                        : String.valueOf(time.getHours());
-                String minutes = (time.getMinutes() < 10 || time.getMinutes() == 0) ? "0" + time.getMinutes()
-                        : String.valueOf(time.getMinutes());
-                String seconds = (time.getSeconds() < 10 || time.getSeconds() == 0) ? "0" + time.getSeconds()
-                        : String.valueOf(time.getSeconds());
-                databaseReference.child("time").setValue(hours + ":" + minutes + ":" + seconds);
-            }
-
-            @Override
-            public void onStatusChanged(String provider, int status, Bundle extras) {
-                Log.i(TAG, "onStatusChanged");
-            }
-
-            @Override
-            public void onProviderEnabled(String provider) {
-                Log.i(TAG, "onProviderEnabled");
-            }
-
-            @Override
-            public void onProviderDisabled(String provider) {
-                Log.i(TAG, "onProviderDisabled");
-            }
-        };
     }
 
     @Override
@@ -358,6 +290,68 @@ public class LocationService extends Service {
         mProvider.onStart();
         isRunning = true;
 
+        final String TAG = "LocationService";
+
+        locationListener = new LocationListener() {
+            @Override
+            public void onLocationChanged(Location location) {
+                Log.i(TAG, "onLocationChanged: " + location.getAccuracy() + ", " + location.getLatitude() + ","
+                        + location.getLongitude() + ", " + location.getProvider());
+                if (ActivityCompat.checkSelfPermission(getApplicationContext(),
+                        Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
+                    Log.e(TAG, "without permissions");
+                    return;
+                }
+
+                Config config = getConfig();
+                String userID = config.getBmpUserID();
+                Calendar calendar = new GregorianCalendar();
+                Date time = new Date(location.getTime());
+
+                calendar.setTime(time);
+
+                FirebaseAuth firebaseAuth = FirebaseAuth.getInstance();
+
+                DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference().child("DOMAINS")
+                        .child(firebaseAuth.getUid()).child("USERS").child(userID)
+                        .child(String.valueOf(calendar.get(Calendar.YEAR)))
+                        .child(String.valueOf(calendar.get(Calendar.MONTH) + 1))
+                        .child(String.valueOf(calendar.get(Calendar.DAY_OF_MONTH))).child("POSITIONS")
+                        .child(String.valueOf(time.getTime()));
+                databaseReference.child("accuracy").setValue(location.getAccuracy());
+                databaseReference.child("altitude").setValue(location.getAltitude());
+                databaseReference.child("dateReceiveFB").setValue(ServerValue.TIMESTAMP);
+                databaseReference.child("device").setValue(Build.MODEL);
+                databaseReference.child("imei").setValue("" + telephonyManager.getDeviceId());
+                databaseReference.child("isMainAppVisible").setValue(false);
+                databaseReference.child("position").setValue(location.getLatitude() + "," + location.getLongitude());
+                databaseReference.child("provider").setValue(location.getProvider());
+                String hours = (time.getHours() < 10 || time.getHours() == 0) ? "0" + time.getHours()
+                        : String.valueOf(time.getHours());
+                String minutes = (time.getMinutes() < 10 || time.getMinutes() == 0) ? "0" + time.getMinutes()
+                        : String.valueOf(time.getMinutes());
+                String seconds = (time.getSeconds() < 10 || time.getSeconds() == 0) ? "0" + time.getSeconds()
+                        : String.valueOf(time.getSeconds());
+                databaseReference.child("time").setValue(hours + ":" + minutes + ":" + seconds);
+            }
+
+            @Override
+            public void onStatusChanged(String provider, int status, Bundle extras) {
+                Log.i(TAG, "onStatusChanged");
+            }
+
+            @Override
+            public void onProviderEnabled(String provider) {
+                Log.i(TAG, "onProviderEnabled");
+            }
+
+            @Override
+            public void onProviderDisabled(String provider) {
+                Log.i(TAG, "onProviderDisabled: " + provider);
+                Toast.makeText(getApplicationContext(), "Proveedor deshabilitado", Toast.LENGTH_LONG).show();
+            }
+        };
+
         // We want this service to continue running until it is explicitly stopped
         return START_STICKY;
     }
@@ -388,7 +382,7 @@ public class LocationService extends Service {
         }
 
         public Notification getNotification(String title, String text, String largeIcon, String smallIcon,
-                String color) {
+                                            String color) {
             // Build a Notification required for running service in foreground.
             NotificationCompat.Builder builder = new NotificationCompat.Builder(LocationService.this);
             builder.setContentTitle(title);
@@ -490,10 +484,11 @@ public class LocationService extends Service {
      * @param location
      */
     public void handleLocation(BackgroundLocation location) {
-        logger.debug("New location {}", location.toString());
+        String TAG = "LocationService";
+        Log.i(TAG, "New location: " + location.toString());
 
         location.setBatchStartMillis(System.currentTimeMillis() + ONE_MINUTE_IN_MILLIS); // prevent sync of not yet
-                                                                                         // posted location
+        // posted location
         persistLocation(location);
         syncLocation(location);
         postLocation(location);
@@ -509,10 +504,23 @@ public class LocationService extends Service {
     }
 
     public void handleStationary(BackgroundLocation location) {
-        logger.debug("New stationary {}", location.toString());
+        String TAG = "LocationService";
+        Log.i(TAG, "New stationary: " + location.toString());
+
+        //if user gets stationary mode, the previews locationListener is removed in order to not to create more than one location listener
+        locationManager.removeUpdates(locationListener);
+
+        //create location listener
+        if (ActivityCompat.checkSelfPermission(getApplicationContext(),
+                Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                && ActivityCompat.checkSelfPermission(getApplicationContext(),
+                Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            Log.e(TAG, "without permissions");
+        }
+        locationManager.requestLocationUpdates(LocationManager.PASSIVE_PROVIDER, 120 * 1000, 0, locationListener);
 
         location.setBatchStartMillis(System.currentTimeMillis() + ONE_MINUTE_IN_MILLIS); // prevent sync of not yet
-                                                                                         // posted location
+        // posted location
         persistLocation(location);
         syncLocation(location);
         postLocation(location);
@@ -529,7 +537,8 @@ public class LocationService extends Service {
     }
 
     public void handleActivity(BackgroundActivity activity) {
-        logger.debug("New activity {}", activity.toString());
+        String TAG = "LocationService";
+        Log.i(TAG, "New stationary: " + activity.toString());
 
         Bundle bundle = new Bundle();
         bundle.putParcelable(BackgroundActivity.BUNDLE_KEY, activity);

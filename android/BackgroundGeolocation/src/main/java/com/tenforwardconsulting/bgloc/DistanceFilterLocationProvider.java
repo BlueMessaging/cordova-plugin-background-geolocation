@@ -24,6 +24,7 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.PowerManager;
+import android.util.Log;
 
 import com.marianhello.bgloc.AbstractLocationProvider;
 import com.marianhello.bgloc.Config;
@@ -395,12 +396,14 @@ public class DistanceFilterLocationProvider extends AbstractLocationProvider imp
     /**
      * User has exit his stationary region!  Initiate aggressive geolocation!
      */
-    public void onExitStationaryRegion(Location location) {
+    /*public void onExitStationaryRegion(Location location) {
         // Filter-out spurious region-exits:  must have at least a little speed to move out of stationary-region
         playDebugTone(Tone.BEEP_BEEP_BEEP);
 
         logger.info("Exited stationary: lat={} long={} acy={}}'",
                 location.getLatitude(), location.getLongitude(), location.getAccuracy());
+        String TAG = "locloc";
+        Log.i(TAG, "onExitStationaryRegion: " + location.toString());
 
         try {
             // Cancel the periodic stationary location monitor alarm.
@@ -413,7 +416,7 @@ public class DistanceFilterLocationProvider extends AbstractLocationProvider imp
             logger.error("Security exception: {}", e.getMessage());
             this.handleSecurityException(e);
         }
-    }
+    }*/
 
     public void startPollingStationaryLocation(long interval) {
         // proximity-alerts don't seem to work while suspended in latest Android 4.42 (works in 4.03).  Have to use AlarmManager to sample
@@ -439,7 +442,7 @@ public class DistanceFilterLocationProvider extends AbstractLocationProvider imp
         // determine if we're almost out of stationary-distance and increase monitoring-rate.
         logger.info("Distance from stationary location: {}", distance);
         if (distance > stationaryRadius) {
-            onExitStationaryRegion(location);
+            //onExitStationaryRegion(location);
         } else if (distance > 0) {
             startPollingStationaryLocation(STATIONARY_LOCATION_POLLING_INTERVAL_AGGRESSIVE);
         } else if (stationaryLocationPollingInterval != STATIONARY_LOCATION_POLLING_INTERVAL_LAZY) {
@@ -518,7 +521,7 @@ public class DistanceFilterLocationProvider extends AbstractLocationProvider imp
                 // There MUST be a valid, recent location if this event-handler was called.
                 Location location = getLastBestLocation();
                 if (location != null) {
-                    onExitStationaryRegion(location);
+                    //onExitStationaryRegion(location);
                 }
             }
         }
