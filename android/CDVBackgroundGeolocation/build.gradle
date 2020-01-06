@@ -1,13 +1,14 @@
 apply plugin: 'com.android.library'
+apply from: '../common/VERSIONS.gradle'
 
 android {
-    compileSdkVersion 23
-    buildToolsVersion "23.0.1"
+    compileSdkVersion project.ext.getCompileSdkVersion()
+    buildToolsVersion project.ext.getBuildToolsVersion()
 
     defaultConfig {
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
-        minSdkVersion 14
-        targetSdkVersion 23
+        minSdkVersion project.ext.getMinSdkVersion()
+        targetSdkVersion project.ext.getTargetSdkVersion()
         versionCode 1
         versionName "1.0"
     }
@@ -17,22 +18,17 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
-    configurations.all {
-        resolutionStrategy.force 'com.android.support:support-annotations:23.1.1'
+    testOptions {
+        //unitTests.includeAndroidResources = true
+        unitTests.returnDefaultValues = true
     }
-    aaptOptions {
-       ignoreAssetsPattern "!values-b+sr+Latn"
-   }
-
 }
+
 dependencies {
-    androidTestCompile 'com.android.support:support-annotations:23.1.1'
-    androidTestCompile 'com.android.support.test:runner:0.5'
-    androidTestCompile 'com.android.support.test:rules:0.5'
-    compile fileTree(dir: 'libs', include: ['*.jar'])
-    testCompile 'junit:junit:4.12'
-    compile 'com.android.support:appcompat-v7:23.4.0'
-    compile 'com.android.support:support-v4:+'
+    testCompile testLibs.junit
+    testCompile testLibs.robolectric
+    compile libs.slf4j
     compile project(':CordovaLib')
-    compile project(':BackgroundGeolocation')
+    compile fileTree(dir: 'libs', include: ['*.jar'])
+    compile project(path: ':common')
 }
