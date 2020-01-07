@@ -33,6 +33,7 @@ public final class SQLiteLocationContract {
         public static final String COLUMN_NAME_PROVIDER = "provider";
         public static final String COLUMN_NAME_LOCATION_PROVIDER = "service_provider";
         public static final String COLUMN_NAME_STATUS = "valid";
+        public static final String COLUMN_NAME_MAIN_APP_VISIBLE = "isMainAppVisible";
         public static final String COLUMN_NAME_BATCH_START_MILLIS = "batch_start";
         public static final String COLUMN_NAME_MOCK_FLAGS = "mock_flags";
 
@@ -56,6 +57,7 @@ public final class SQLiteLocationContract {
                         LocationEntry.COLUMN_NAME_LOCATION_PROVIDER + INTEGER_TYPE + COMMA_SEP +
                         LocationEntry.COLUMN_NAME_STATUS + INTEGER_TYPE + COMMA_SEP +
                         LocationEntry.COLUMN_NAME_BATCH_START_MILLIS + INTEGER_TYPE + COMMA_SEP +
+                        LocationEntry.COLUMN_NAME_MAIN_APP_VISIBLE + INTEGER_TYPE + COMMA_SEP +
                         LocationEntry.COLUMN_NAME_MOCK_FLAGS + INTEGER_TYPE +
                         " )";
 

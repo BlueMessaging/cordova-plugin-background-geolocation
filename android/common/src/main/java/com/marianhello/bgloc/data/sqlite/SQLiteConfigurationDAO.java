@@ -56,7 +56,8 @@ public class SQLiteConfigurationDAO implements ConfigurationDAO {
       ConfigurationEntry.COLUMN_NAME_SYNC_THRESHOLD,
       ConfigurationEntry.COLUMN_NAME_HEADERS,
       ConfigurationEntry.COLUMN_NAME_MAX_LOCATIONS,
-      ConfigurationEntry.COLUMN_NAME_TEMPLATE
+      ConfigurationEntry.COLUMN_NAME_TEMPLATE,
+      ConfigurationEntry.COLUMN_NAME_BMP_USER_ID
     };
 
     String whereClause = null;
@@ -123,6 +124,7 @@ public class SQLiteConfigurationDAO implements ConfigurationDAO {
     config.setHttpHeaders(new JSONObject(c.getString(c.getColumnIndex(ConfigurationEntry.COLUMN_NAME_HEADERS))));
     config.setMaxLocations(c.getInt(c.getColumnIndex(ConfigurationEntry.COLUMN_NAME_MAX_LOCATIONS)));
     config.setTemplate(LocationTemplateFactory.fromJSONString(c.getString(c.getColumnIndex(ConfigurationEntry.COLUMN_NAME_TEMPLATE))));
+    config.setBmpUserID(c.getString(c.getColumnIndex(ConfigurationEntry.COLUMN_NAME_BMP_USER_ID)));
 
     return config;
   }
@@ -154,6 +156,7 @@ public class SQLiteConfigurationDAO implements ConfigurationDAO {
     values.put(ConfigurationEntry.COLUMN_NAME_HEADERS, new JSONObject(config.getHttpHeaders()).toString());
     values.put(ConfigurationEntry.COLUMN_NAME_MAX_LOCATIONS, config.getMaxLocations());
     values.put(ConfigurationEntry.COLUMN_NAME_TEMPLATE, config.hasTemplate() ? config.getTemplate().toString() : null);
+    values.put(ConfigurationEntry.COLUMN_NAME_BMP_USER_ID, config.getBmpUserID());
 
     return values;
   }

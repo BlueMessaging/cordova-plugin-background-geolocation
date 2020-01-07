@@ -63,6 +63,7 @@ public class Config implements Parcelable
     private HashMap httpHeaders;
     private Integer maxLocations;
     private LocationTemplate template;
+    private String bmpUserID;
 
     public Config () {
     }
@@ -123,6 +124,7 @@ public class Config implements Parcelable
         Bundle bundle = in.readBundle();
         setHttpHeaders((HashMap<String, String>) bundle.getSerializable("httpHeaders"));
         setTemplate((LocationTemplate) bundle.getSerializable(AbstractLocationTemplate.BUNDLE_KEY));
+        setBmpUserID(in.readString());
     }
 
     public static Config getDefault() {
@@ -151,6 +153,7 @@ public class Config implements Parcelable
         config.httpHeaders = null;
         config.maxLocations = 10000;
         config.template = null;
+        config.bmpUserID = "bmpUserID";
 
         return config;
     }
@@ -187,6 +190,7 @@ public class Config implements Parcelable
         bundle.putSerializable("httpHeaders", getHttpHeaders());
         bundle.putSerializable(AbstractLocationTemplate.BUNDLE_KEY, (AbstractLocationTemplate) getTemplate());
         out.writeBundle(bundle);
+        out.writeString(getBmpUserID());
     }
 
     public static final Parcelable.Creator<Config> CREATOR
@@ -520,6 +524,22 @@ public class Config implements Parcelable
         this.template = template;
     }
 
+    public boolean hasBmpUserID() {
+        return bmpUserID != null;
+    }
+
+    public String getBmpUserID() {
+        return bmpUserID;
+    }
+
+    public void setBmpUserID(String bmpUserID) {
+        if ("null".equals(bmpUserID)) {
+            this.bmpUserID = "";
+        } else {
+            this.bmpUserID = bmpUserID;
+        }
+    }
+
     @Override
     public String toString () {
         return new StringBuffer()
@@ -547,6 +567,7 @@ public class Config implements Parcelable
                 .append(" httpHeaders=").append(getHttpHeaders().toString())
                 .append(" maxLocations=").append(getMaxLocations())
                 .append(" postTemplate=").append(hasTemplate() ? getTemplate().toString() : null)
+                .append(" bmpUserID=").append(getBmpUserID())
                 .append("]")
                 .toString();
     }
@@ -638,6 +659,9 @@ public class Config implements Parcelable
         }
         if (config2.hasTemplate()) {
             merger.setTemplate(config2.getTemplate());
+        }
+        if (config2.hasBmpUserID()) {
+            merger.setBmpUserID(config2.getBmpUserID());
         }
 
         return merger;

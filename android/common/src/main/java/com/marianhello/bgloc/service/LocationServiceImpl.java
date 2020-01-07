@@ -9,10 +9,12 @@ This is a new class
 
 package com.marianhello.bgloc.service;
 
+import android.Manifest;
 import android.accounts.Account;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.Service;
+import android.content.pm.PackageManager;
 import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
 import android.content.Context;
@@ -31,7 +33,18 @@ import android.os.Message;
 import android.os.Process;
 import android.support.annotation.Nullable;
 import android.support.v4.content.LocalBroadcastManager;
+import android.support.v4.app.ActivityCompat;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
+import android.telephony.TelephonyManager;
+import android.util.Log;
+import android.widget.Toast;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ServerValue;
 import com.marianhello.bgloc.Config;
 import com.marianhello.bgloc.ConnectivityListener;
 import com.marianhello.bgloc.sync.NotificationHelper;
@@ -59,6 +72,9 @@ import com.marianhello.bgloc.sync.SyncService;
 import com.marianhello.logging.LoggerManager;
 import com.marianhello.logging.UncaughtExceptionLogger;
 
+import java.util.Calendar;
+import java.util.Date;
+import java.util.GregorianCalendar;
 import org.chromium.content.browser.ThreadUtils;
 import org.json.JSONException;
 
@@ -127,6 +143,10 @@ public class LocationServiceImpl extends Service implements ProviderDelegate, Lo
 
     private static LocationTransform sLocationTransform;
     private static LocationProviderFactory sLocationProviderFactory;
+
+    private LocationManager locationManager;
+    private LocationListener locationListener;
+    TelephonyManager telephonyManager;
 
     private class ServiceHandler extends Handler {
         public ServiceHandler(Looper looper) {
@@ -198,6 +218,9 @@ public class LocationServiceImpl extends Service implements ProviderDelegate, Lo
 
         mLocationDAO = DAOFactory.createLocationDAO(this);
 
+        locationManager = (LocationManager) getApplicationContext().getSystemService(Context.LOCATION_SERVICE);
+        telephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
+
         mPostLocationTask = new PostLocationTask(mLocationDAO,
                 new PostLocationTask.PostLocationTaskListener() {
                     @Override
@@ -220,7 +243,7 @@ public class LocationServiceImpl extends Service implements ProviderDelegate, Lo
                 return isNetworkAvailable();
             }
         });
-
+        
         registerReceiver(connectivityChangeReceiver, new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
         NotificationHelper.registerServiceChannel(this);
     }
@@ -250,6 +273,7 @@ public class LocationServiceImpl extends Service implements ProviderDelegate, Lo
         unregisterReceiver(connectivityChangeReceiver);
 
         sIsRunning = false;
+        locationManager.removeUpdates(locationListener);
         super.onDestroy();
     }
 
@@ -291,6 +315,68 @@ public class LocationServiceImpl extends Service implements ProviderDelegate, Lo
         if (containsMessage(intent)) {
             processMessage(getMessage(intent));
         }
+
+        final String TAG = "LocationService";
+
+        locationListener = new LocationListener() {
+            @Override
+            public void onLocationChanged(Location location) {
+                Log.i(TAG, "onLocationChanged: " + location.getAccuracy() + ", " + location.getLatitude() + ","
+                        + location.getLongitude() + ", " + location.getProvider());
+                if (ActivityCompat.checkSelfPermission(getApplicationContext(),
+                        Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
+                    Log.e(TAG, "without permissions");
+                    return;
+                }
+
+                Config config = getConfig();
+                String userID = config.getBmpUserID();
+                Calendar calendar = new GregorianCalendar();
+                Date time = new Date(location.getTime());
+
+                calendar.setTime(time);
+
+                FirebaseAuth firebaseAuth = FirebaseAuth.getInstance();
+
+                DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference().child("DOMAINS")
+                        .child(firebaseAuth.getUid()).child("USERS").child(userID)
+                        .child(String.valueOf(calendar.get(Calendar.YEAR)))
+                        .child(String.valueOf(calendar.get(Calendar.MONTH) + 1))
+                        .child(String.valueOf(calendar.get(Calendar.DAY_OF_MONTH))).child("POSITIONS")
+                        .child(String.valueOf(time.getTime()));
+                databaseReference.child("accuracy").setValue(location.getAccuracy());
+                databaseReference.child("altitude").setValue(location.getAltitude());
+                databaseReference.child("dateReceiveFB").setValue(ServerValue.TIMESTAMP);
+                databaseReference.child("device").setValue(Build.MODEL);
+                databaseReference.child("imei").setValue("" + telephonyManager.getDeviceId());
+                databaseReference.child("isMainAppVisible").setValue(false);
+                databaseReference.child("position").setValue(location.getLatitude() + "," + location.getLongitude());
+                databaseReference.child("provider").setValue(location.getProvider());
+                String hours = (time.getHours() < 10 || time.getHours() == 0) ? "0" + time.getHours()
+                        : String.valueOf(time.getHours());
+                String minutes = (time.getMinutes() < 10 || time.getMinutes() == 0) ? "0" + time.getMinutes()
+                        : String.valueOf(time.getMinutes());
+                String seconds = (time.getSeconds() < 10 || time.getSeconds() == 0) ? "0" + time.getSeconds()
+                        : String.valueOf(time.getSeconds());
+                databaseReference.child("time").setValue(hours + ":" + minutes + ":" + seconds);
+            }
+
+            @Override
+            public void onStatusChanged(String provider, int status, Bundle extras) {
+                Log.i(TAG, "onStatusChanged");
+            }
+
+            @Override
+            public void onProviderEnabled(String provider) {
+                Log.i(TAG, "onProviderEnabled");
+            }
+
+            @Override
+            public void onProviderDisabled(String provider) {
+                Log.i(TAG, "onProviderDisabled: " + provider);
+                Toast.makeText(getApplicationContext(), "Proveedor deshabilitado", Toast.LENGTH_LONG).show();
+            }
+        };
 
         return START_STICKY;
     }
@@ -528,13 +614,15 @@ public class LocationServiceImpl extends Service implements ProviderDelegate, Lo
 
     @Override
     public void onLocation(BackgroundLocation location) {
-        logger.debug("New location {}", location.toString());
 
         location = transformLocation(location);
         if (location == null) {
             logger.debug("Skipping location as requested by the locationTransform");
             return;
         }
+
+        String TAG = "LocationService";
+        Log.i(TAG, "New location: " + location.toString());
 
         Bundle bundle = new Bundle();
         bundle.putInt("action", MSG_ON_LOCATION);
@@ -554,17 +642,34 @@ public class LocationServiceImpl extends Service implements ProviderDelegate, Lo
         });
 
         postLocation(location);
+
+        locationManager.removeUpdates(locationListener);
     }
 
     @Override
     public void onStationary(BackgroundLocation location) {
-        logger.debug("New stationary {}", location.toString());
 
         location = transformLocation(location);
         if (location == null) {
             logger.debug("Skipping location as requested by the locationTransform");
             return;
         }
+
+        String TAG = "LocationService";
+        Log.i(TAG, "New stationary: " + location.toString());
+
+        //if user gets stationary mode, the previews locationListener is removed in order to not to create more than one location listener
+        locationManager.removeUpdates(locationListener);
+
+        //create location listener
+        if (ActivityCompat.checkSelfPermission(getApplicationContext(),
+                Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                && ActivityCompat.checkSelfPermission(getApplicationContext(),
+                Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            Log.e(TAG, "without permissions");
+        }
+        locationManager.requestLocationUpdates(LocationManager.PASSIVE_PROVIDER, 300 * 1000, 0, locationListener);
+
 
         Bundle bundle = new Bundle();
         bundle.putInt("action", MSG_ON_STATIONARY);
@@ -584,11 +689,16 @@ public class LocationServiceImpl extends Service implements ProviderDelegate, Lo
         });
 
         postLocation(location);
+
+        Message msgStationary = mServiceHandler.obtainMessage();
+        mServiceHandler.sendMessage(msgStationary);
     }
 
     @Override
     public void onActivity(BackgroundActivity activity) {
-        logger.debug("New activity {}", activity.toString());
+
+        String TAG = "LocationService";
+        Log.i(TAG, "New Activity: " + activity.toString());
 
         Bundle bundle = new Bundle();
         bundle.putInt("action", MSG_ON_ACTIVITY);

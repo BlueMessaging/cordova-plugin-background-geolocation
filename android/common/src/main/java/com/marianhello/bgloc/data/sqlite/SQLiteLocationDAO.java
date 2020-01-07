@@ -312,6 +312,7 @@ public class SQLiteLocationDAO implements LocationDAO {
             location.getBatchStartMillis(),
             location.getStatus(),
             location.getMockFlags(),
+            location.isMainAppVisible() ? 1 : 0,
             locationId
     });
 
@@ -387,7 +388,7 @@ public class SQLiteLocationDAO implements LocationDAO {
     ContentValues values = new ContentValues();
     values.put(LocationEntry.COLUMN_NAME_STATUS, BackgroundLocation.DELETED);
 
-    return db.update(LocationEntry.TABLE_NAME, values, null, null);
+    return db.delete(LocationEntry.TABLE_NAME, null, null);
   }
 
   /**
@@ -428,6 +429,7 @@ public class SQLiteLocationDAO implements LocationDAO {
     l.setLocationProvider(c.getInt(c.getColumnIndex(LocationEntry.COLUMN_NAME_LOCATION_PROVIDER)));
     l.setBatchStartMillis(c.getLong(c.getColumnIndex(LocationEntry.COLUMN_NAME_BATCH_START_MILLIS)));
     l.setStatus(c.getInt(c.getColumnIndex(LocationEntry.COLUMN_NAME_STATUS)));
+    l.setMainAppVisible(c.getColumnIndex(LocationEntry.COLUMN_NAME_MAIN_APP_VISIBLE) != 0);
     l.setLocationId(c.getLong(c.getColumnIndex(LocationEntry._ID)));
     l.setMockFlags(c.getInt((c.getColumnIndex(LocationEntry.COLUMN_NAME_MOCK_FLAGS))));
 
@@ -452,6 +454,7 @@ public class SQLiteLocationDAO implements LocationDAO {
     values.put(LocationEntry.COLUMN_NAME_HAS_RADIUS, l.hasRadius() ? 1 : 0);
     values.put(LocationEntry.COLUMN_NAME_LOCATION_PROVIDER, l.getLocationProvider());
     values.put(LocationEntry.COLUMN_NAME_STATUS, l.getStatus());
+    values.put(LocationEntry.COLUMN_NAME_MAIN_APP_VISIBLE, l.isMainAppVisible() ? 1 : 0);
     values.put(LocationEntry.COLUMN_NAME_BATCH_START_MILLIS, l.getBatchStartMillis());
     values.put(LocationEntry.COLUMN_NAME_MOCK_FLAGS, l.getMockFlags());
 
@@ -478,6 +481,7 @@ public class SQLiteLocationDAO implements LocationDAO {
             LocationEntry.COLUMN_NAME_LOCATION_PROVIDER,
             LocationEntry.COLUMN_NAME_STATUS,
             LocationEntry.COLUMN_NAME_BATCH_START_MILLIS,
+            LocationEntry.COLUMN_NAME_MAIN_APP_VISIBLE,
             LocationEntry.COLUMN_NAME_MOCK_FLAGS
     };
 

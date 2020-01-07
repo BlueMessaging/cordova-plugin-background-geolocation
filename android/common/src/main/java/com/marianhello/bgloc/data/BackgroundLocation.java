@@ -40,6 +40,7 @@ public class BackgroundLocation implements Parcelable {
     private boolean hasRadius = false;
     private int mockFlags = 0x0000;
     private int status = POST_PENDING;
+    private boolean isMainAppVisible = true;
     private Bundle extras = null;
 
     private static final long TWO_MINUTES_IN_NANOS = 1000000000L * 60 * 2;
@@ -102,6 +103,7 @@ public class BackgroundLocation implements Parcelable {
         hasRadius = l.hasRadius;
         mockFlags = l.mockFlags;
         status = l.status;
+        isMainAppVisible = l.isMainAppVisible;
         extras = (l.extras == null) ? null : new Bundle(l.extras);
     }
 
@@ -128,6 +130,7 @@ public class BackgroundLocation implements Parcelable {
         l.hasRadius = in.readInt() != 0;
         l.mockFlags = in.readInt();
         l.status = in.readInt();
+        l.isMainAppVisible = in.readInt() != 0;
         l.extras = in.readBundle();
 
         return l;
@@ -221,6 +224,7 @@ public class BackgroundLocation implements Parcelable {
         dest.writeInt(hasSpeed ? 1 : 0);
         dest.writeInt(hasBearing ? 1 : 0);
         dest.writeInt(hasRadius ? 1 : 0);
+        dest.writeInt(isMainAppVisible ? 1 : 0);
         dest.writeInt(mockFlags);
         dest.writeInt(status);
         dest.writeBundle(extras);
@@ -832,6 +836,7 @@ public class BackgroundLocation implements Parcelable {
         if (extras != null) {
             s.append(" {").append(extras).append('}');
         }
+        s.append(" isMainAppVisible=").append(isMainAppVisible);
         s.append(" locprov=").append(locationProvider);
         s.append("]");
 
@@ -846,6 +851,7 @@ public class BackgroundLocation implements Parcelable {
         JSONObject json = new JSONObject();
         json.put("provider", provider);
         json.put("locationProvider", locationProvider);
+        json.put("isMainAppVisible", isMainAppVisible);
         json.put("time", time);
         json.put("latitude", latitude);
         json.put("longitude", longitude);
@@ -900,6 +906,14 @@ public class BackgroundLocation implements Parcelable {
         return values;
     }
 
+    public boolean isMainAppVisible() {
+        return isMainAppVisible;
+    }
+
+    public void setMainAppVisible(boolean mainAppVisible) {
+        isMainAppVisible = mainAppVisible;
+    }
+    
     public Object getValueForKey(String key) {
         if ("@id".equals(key)) {
             return locationId;
